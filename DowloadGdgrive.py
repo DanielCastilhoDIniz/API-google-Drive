@@ -17,7 +17,7 @@ SCOPES = ["https://www.googleapis.com/auth/drive",
           "https://www.googleapis.com/auth/drive.file"]
 
 
-def download_file(real_file_id, download_path='D:/CYLENE/APIDRIVE'):
+def download_file(real_file_id, download_path='D:/TI/api_google_drive/API-google-Drive'):
     creds = None
     # authentication
     if os.path.exists("token.json"):
@@ -39,8 +39,9 @@ def download_file(real_file_id, download_path='D:/CYLENE/APIDRIVE'):
 
         file_id = real_file_id
         file_metadata = service.files().get(fileId=file_id).execute()
+        print(file_metadata['name'])
 
-        # Lista arquivos no driveI
+        # Lista arquivos no drive
         results = (
             service.files()
             .list(pageSize=15, fields="nextPageToken, files(id, name)")
@@ -57,7 +58,7 @@ def download_file(real_file_id, download_path='D:/CYLENE/APIDRIVE'):
         if 'application/vnd.google-apps.document' in file_metadata['mimeType']:
             download_and_convert_google_doc(file_id, download_path, creds)
         elif 'application/vnd.google-apps.spreadsheet' in file_metadata['mimeType']:
-            download_and_convert_google_sheet(file_id, download_path, creds)
+            download_and_convert_google_sheet(file_id, download_path, creds,file_metadata)
         else:
             request = service.files().get_media(fileId=file_id)
             file_extension = os.path.splitext(file_metadata['name'])[1]
@@ -77,31 +78,31 @@ def download_file(real_file_id, download_path='D:/CYLENE/APIDRIVE'):
         print(f"Ocorreu um erro: {error}")
 
 
-def download_and_convert_google_doc(file_id, download_path, creds):
-    service = build("drive", "v3", credentials=creds)
+    def download_and_convert_google_doc(file_id, download_path, creds, file_metadata):
+        service = build("drive", "v3", credentials=creds)
 
-    request = service.files().export_media(fileId=file_id,
-                                           mimeType='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
-    file_path = os.path.join(download_path, f"{file_id}.docx")
+        request = service.files().export_media(fileId=file_id,
+                                            mimeType='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+        file_path = os.path.join(download_path, f"{file_metadata['name']}.docx")
 
-    with open(file_path, "wb") as file:
-        downloader = MediaIoBaseDownload(file, request)
-        done = False
-        while done is False:
-            status, done = downloader.next_chunk()
-            print(f"Download {int(status.progress() * 100)}.")
+        with open(file_path, "wb") as file:
+            downloader = MediaIoBaseDownload(file, request)
+            done = False
+            while done is False:
+                status, done = downloader.next_chunk()
+                print(f"Download {int(status.progress() * 100)}.")
 
-    print(f"O documento DOCX foi salvo em: {file_path}")
+        print(f"O documento DOCX foi salvo em: {file_path}")
 
 
-def download_and_convert_google_sheet(file_id, download_path, creds):
+def download_and_convert_google_sheet(file_id, download_path, creds,file_metadata):
     gc = pygsheets.authorize(service_file=None, credentials=creds)
     sh = gc.open_by_key(file_id)
 
     # Baixa a planilha como um DataFrame do pandas
     df = sh.sheet1.get_as_df()
 
-    xlsx_path = os.path.join(download_path, f"{file_id}.xlsx")
+    xlsx_path = os.path.join(download_path, f"{file_metadata['name']}.xlsx")
 
     # Salva o DataFrame como um arquivo XLSX
     df.to_excel(xlsx_path, index=False)
