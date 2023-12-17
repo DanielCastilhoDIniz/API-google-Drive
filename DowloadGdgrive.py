@@ -18,6 +18,7 @@ SCOPES = ["https://www.googleapis.com/auth/drive",
 
 
 def download_file(real_file_id, download_path='D:/CYLENE/APIDRIVE'):
+    creds = None
     # authentication
     if os.path.exists("token.json"):
         creds = Credentials.from_authorized_user_file("token.json", SCOPES)
@@ -39,7 +40,20 @@ def download_file(real_file_id, download_path='D:/CYLENE/APIDRIVE'):
         file_id = real_file_id
         file_metadata = service.files().get(fileId=file_id).execute()
 
-       
+        # Lista arquivos no driveI
+        results = (
+            service.files()
+            .list(pageSize=15, fields="nextPageToken, files(id, name)")
+            .execute()
+        )
+        items = results.get("files", [])
+        if not items:
+            print("No files found.")
+            return
+        print("Files:")
+        for item in items:
+            print(f"{item['name']} ({item['id']})")
+
         if 'application/vnd.google-apps.document' in file_metadata['mimeType']:
             download_and_convert_google_doc(file_id, download_path, creds)
         elif 'application/vnd.google-apps.spreadsheet' in file_metadata['mimeType']:
